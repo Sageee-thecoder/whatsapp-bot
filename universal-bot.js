@@ -24,6 +24,9 @@ const client = new Client({
 let botNumber = '';
 const startTime = Date.now();
 
+// Otomatik selamlanan numaralar seti
+const greetedNumbers = new Set();
+
 client.on('qr', (qr) => {
     console.log('📱 QR Code received, scan with your phone:');
     qrcode.generate(qr, { small: true });
@@ -51,22 +54,32 @@ client.on('ready', async () => {
 });
 
 client.on('message_create', async (message) => {
-    console.log('\n📩 MESSAGE DETECTED:');
-    console.log(`   From: ${message.from}`);
-    console.log(`   To: ${message.to}`);
-    console.log(`   Body: "${message.body}"`);
-    console.log(`   Type: ${message.type}`);
-    console.log(`   From Me: ${message.fromMe}`);
-    console.log(`   Timestamp: ${new Date(message.timestamp * 1000).toLocaleString()}`);
+    // Otomatik selam mekanizması
+    if (!message.fromMe && message.type === 'chat' && message.body) {
+        try {
+            if (!greetedNumbers.has(message.from)) {
+                const contact = await client.getContactById(message.from);
+                if (!contact.isMyContact) {
+                    await client.sendMessage(message.from, `Hello 👋, it seems like im not online right now. But hey, you can try my bot with the /help code in the meanwhile, i will return as soon as possible, take care <3.`);
+                    greetedNumbers.add(message.from);
+                    console.log(`🤖 Otomatik selam gönderildi: ${message.from}`);
+                }
+            }
+        } catch (err) {
+            console.error('🤖 Otomatik selamda hata:', err);
+        }
+    }
 
+    // Komutları sadece kendi mesajların değil, komutla başlayan mesajlar için işle
+    if (message.fromMe) return;
     if (message.type !== 'chat' || !message.body.startsWith('/')) {
-        console.log('   ⏭️ Skipping message (not a command)');
+        // Komut değilse işlem yapma
         return;
     }
 
     const messageBody = message.body.toLowerCase().trim();
 
-    // Determine chat type and name
+    // Chat türü ve adı belirle
     let chatType = 'Unknown';
     let chatName = 'Unknown';
 
@@ -88,7 +101,7 @@ client.on('message_create', async (message) => {
         }
     }
 
-    console.log(`   💬 Chat Type: ${chatType} - ${chatName}`);
+    console.log(`💬 Chat Type: ${chatType} - ${chatName}`);
 
     try {
         let response = '';
@@ -96,7 +109,6 @@ client.on('message_create', async (message) => {
         switch (true) {
             case messageBody === '/help':
             case messageBody === '/start':
-                console.log('   🤖 Sending help message...');
                 response = `🤖 *WhatsApp Universal Bot Commands:*
 
 Available commands:
@@ -123,7 +135,6 @@ Available commands:
                 break;
 
             case messageBody === '/ping':
-                console.log('   🏓 Sending ping response...');
                 response = `🏓 Pong! Bot is online and working in ${chatType}: ${chatName}`;
                 break;
 
@@ -138,13 +149,11 @@ Available commands:
                 break;
 
             case messageBody === '/time':
-                console.log('   🕐 Sending time...');
                 response = `🕐 Current time: ${new Date().toLocaleString()}`;
                 break;
 
             case messageBody === '/joke':
                 {
-                    console.log('   😂 Sending joke...');
                     const jokes = [
                         "Why don't scientists trust atoms? Because they make up everything!",
                         "Why did the scarecrow win an award? He was outstanding in his field!",
@@ -163,7 +172,6 @@ Available commands:
 
             case messageBody === '/quote':
                 {
-                    console.log('   💡 Sending motivational quote...');
                     const quotes = [
                         "Believe you can and you're halfway there. – Theodore Roosevelt",
                         "Do one thing every day that scares you. – Eleanor Roosevelt",
@@ -176,7 +184,6 @@ Available commands:
                 break;
 
             case messageBody === '/info':
-                console.log('   ℹ️ Sending bot info...');
                 response = `🤖 *Bot Information:*
 
 Name: WhatsApp Universal Bot
@@ -191,7 +198,6 @@ This bot responds to EVERYONE's commands in any chat!`;
                 break;
 
             case messageBody === '/whoami':
-                console.log('   👤 Sending user info...');
                 response = `👤 *Your Information:*
 
 Your Number: ${message.from}
@@ -202,7 +208,6 @@ Chat ID: ${message.to}`;
                 break;
 
             case messageBody === '/chatinfo':
-                console.log('   📊 Sending chat info...');
                 response = `📊 *Chat Information:*
 
 Chat Type: ${chatType}
@@ -214,29 +219,25 @@ Message Timestamp: ${new Date(message.timestamp * 1000).toLocaleString()}`;
 
             case messageBody.startsWith('/echo '):
                 {
-                    const echoText = message.body.slice(6); // Remove "/echo "
-                    console.log('   🔄 Echoing message...');
+                    const echoText = message.body.slice(6);
                     response = `🔄 You said: ${echoText}`;
                 }
                 break;
 
             case messageBody === '/restart':
-                response = '♻️ Restarting the bot...';
-                await client.sendMessage(message.to, response);
+                await client.sendMessage(message.to, '♻️ Restarting the bot...');
                 console.log('♻️ Restart command received, shutting down...');
                 setTimeout(() => process.exit(0), 1000);
-                break;
+                return;
 
             case messageBody === '/shutdown':
-                response = '🛑 Shutting down the bot...';
-                await client.sendMessage(message.to, response);
+                await client.sendMessage(message.to, '🛑 Shutting down the bot...');
                 console.log('🛑 Shutdown command received, shutting down...');
                 setTimeout(() => process.exit(0), 1000);
-                break;
+                return;
 
             case messageBody === '/tagall':
                 {
-                    console.log('   📣 Tagging all group members...');
                     const chat = await client.getChatById(message.to);
                     if (!chat.isGroup) {
                         response = '⚠️ This command only works in groups!';
@@ -253,8 +254,8 @@ Message Timestamp: ${new Date(message.timestamp * 1000).toLocaleString()}`;
                     }
 
                     await chat.sendMessage(mentionText, { mentions });
-                    console.log('   ✅ Tagall message sent!');
-                    return; // no need to send generic response
+                    console.log('✅ Tagall message sent!');
+                    return;
                 }
 
             case messageBody.startsWith('/kick '):
@@ -363,12 +364,11 @@ Message Timestamp: ${new Date(message.timestamp * 1000).toLocaleString()}`;
                         }
                     }, delayMs);
 
-                    return; // No need to send generic response after this
+                    return;
                 }
 
             case messageBody.startsWith('/spam '):
                 {
-                    // format: /spam <count> <message>
                     const args = message.body.split(' ');
                     if (args.length < 3) {
                         response = '❗ Usage: /spam <count> <message>';
@@ -376,7 +376,7 @@ Message Timestamp: ${new Date(message.timestamp * 1000).toLocaleString()}`;
                     }
 
                     let count = parseInt(args[1], 10);
-                    if (isNaN(count) || count < 1 || count > 1000000) {
+                    if (isNaN(count) || count < 1 || count > 10) {
                         response = '❗ Count must be a number between 1 and 10 to prevent abuse.';
                         break;
                     }
@@ -389,7 +389,7 @@ Message Timestamp: ${new Date(message.timestamp * 1000).toLocaleString()}`;
                         await client.sendMessage(message.to, spamMessage);
                     }
 
-                    return; // Already responded
+                    return;
                 }
 
             default:
@@ -399,15 +399,15 @@ Message Timestamp: ${new Date(message.timestamp * 1000).toLocaleString()}`;
 
         if (response) {
             await client.sendMessage(message.to, response);
-            console.log('   ✅ Response sent successfully!');
+            console.log('✅ Response sent successfully!');
         }
     } catch (error) {
-        console.error('   ❌ Error processing message:', error);
+        console.error('❌ Error processing message:', error);
         try {
             await client.sendMessage(message.to, '❌ Sorry, something went wrong. Please try again.');
-            console.log('   ✅ Error message sent!');
+            console.log('✅ Error message sent!');
         } catch (replyError) {
-            console.error('   ❌ Failed to send error message:', replyError);
+            console.error('❌ Failed to send error message:', replyError);
         }
     }
 });
