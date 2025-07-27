@@ -1,5 +1,15 @@
-const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
+const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
+const express = require('express');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => res.send('Bot is running!'));
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Express server listening on port ${PORT}`);
+});
 
 console.log('🚀 Starting Universal WhatsApp Bot...');
 
@@ -23,8 +33,6 @@ const client = new Client({
 
 let botNumber = '';
 const startTime = Date.now();
-
-// Otomatik selamlanan numaralar seti
 const greetedNumbers = new Set();
 
 client.on('qr', (qr) => {
@@ -38,8 +46,6 @@ client.on('authenticated', () => {
 
 client.on('ready', async () => {
     console.log('✅ WhatsApp Bot is ready!');
-    console.log('📱 Bot is now connected and listening for messages...');
-
     const info = client.info;
     botNumber = info.wid.user;
     console.log(`📞 Connected as: ${info.pushname} (${botNumber})`);
@@ -54,13 +60,13 @@ client.on('ready', async () => {
 });
 
 client.on('message_create', async (message) => {
-    // Otomatik selam mekanizması
+    // Otomatik selamlama
     if (!message.fromMe && message.type === 'chat' && message.body) {
         try {
             if (!greetedNumbers.has(message.from)) {
                 const contact = await client.getContactById(message.from);
                 if (!contact.isMyContact) {
-                    await client.sendMessage(message.from, `Hello 👋, it seems like im not online right now. But hey, you can try my bot with the /help code in the meanwhile, i will return as soon as possible, take care <3.`);
+                    await client.sendMessage(message.from, `Hello 👋, it seems like I'm not online right now. But hey, you can try my bot with the /help command in the meanwhile, I'll return as soon as possible, take care <3.`);
                     greetedNumbers.add(message.from);
                     console.log(`🤖 Otomatik selam gönderildi: ${message.from}`);
                 }
@@ -70,16 +76,12 @@ client.on('message_create', async (message) => {
         }
     }
 
-    // Komutları sadece kendi mesajların değil, komutla başlayan mesajlar için işle
     if (message.fromMe) return;
-    if (message.type !== 'chat' || !message.body.startsWith('/')) {
-        // Komut değilse işlem yapma
-        return;
-    }
+    if (message.type !== 'chat' || !message.body.startsWith('/')) return;
 
     const messageBody = message.body.toLowerCase().trim();
 
-    // Chat türü ve adı belirle
+    // Chat türü ve adı
     let chatType = 'Unknown';
     let chatName = 'Unknown';
 
@@ -138,50 +140,47 @@ Available commands:
                 response = `🏓 Pong! Bot is online and working in ${chatType}: ${chatName}`;
                 break;
 
-            case messageBody === '/uptime':
-                {
-                    const uptimeSeconds = Math.floor((Date.now() - startTime) / 1000);
-                    const hours = Math.floor(uptimeSeconds / 3600);
-                    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
-                    const seconds = uptimeSeconds % 60;
-                    response = `⏱️ Bot uptime: ${hours}h ${minutes}m ${seconds}s`;
-                }
+            case messageBody === '/uptime': {
+                const uptimeSeconds = Math.floor((Date.now() - startTime) / 1000);
+                const hours = Math.floor(uptimeSeconds / 3600);
+                const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+                const seconds = uptimeSeconds % 60;
+                response = `⏱️ Bot uptime: ${hours}h ${minutes}m ${seconds}s`;
                 break;
+            }
 
             case messageBody === '/time':
                 response = `🕐 Current time: ${new Date().toLocaleString()}`;
                 break;
 
-            case messageBody === '/joke':
-                {
-                    const jokes = [
-                        "Why don't scientists trust atoms? Because they make up everything!",
-                        "Why did the scarecrow win an award? He was outstanding in his field!",
-                        "Why don't eggs tell jokes? They'd crack each other up!",
-                        "What do you call a bear with no teeth? A gummy bear!",
-                        "Why did the math book look so sad? Because it had too many problems!",
-                        "What do you call a fake noodle? An impasta!",
-                        "Why don't skeletons fight each other? They don't have the guts!",
-                        "What do you call a sleeping bull? A bulldozer!",
-                        "Why did the coffee file a police report? It got mugged!",
-                        "What's the best thing about Switzerland? I don't know, but the flag is a big plus!"
-                    ];
-                    response = `😂 ${jokes[Math.floor(Math.random() * jokes.length)]}`;
-                }
+            case messageBody === '/joke': {
+                const jokes = [
+                    "Why don't scientists trust atoms? Because they make up everything!",
+                    "Why did the scarecrow win an award? He was outstanding in his field!",
+                    "Why don't eggs tell jokes? They'd crack each other up!",
+                    "What do you call a bear with no teeth? A gummy bear!",
+                    "Why did the math book look so sad? Because it had too many problems!",
+                    "What do you call a fake noodle? An impasta!",
+                    "Why don't skeletons fight each other? They don't have the guts!",
+                    "What do you call a sleeping bull? A bulldozer!",
+                    "Why did the coffee file a police report? It got mugged!",
+                    "What's the best thing about Switzerland? I don't know, but the flag is a big plus!"
+                ];
+                response = `😂 ${jokes[Math.floor(Math.random() * jokes.length)]}`;
                 break;
+            }
 
-            case messageBody === '/quote':
-                {
-                    const quotes = [
-                        "Believe you can and you're halfway there. – Theodore Roosevelt",
-                        "Do one thing every day that scares you. – Eleanor Roosevelt",
-                        "Keep your face always toward the sunshine—and shadows will fall behind you. – Walt Whitman",
-                        "The only way to do great work is to love what you do. – Steve Jobs",
-                        "The best way out is always through. – Robert Frost"
-                    ];
-                    response = `💡 Motivational Quote:\n"${quotes[Math.floor(Math.random() * quotes.length)]}"`;
-                }
+            case messageBody === '/quote': {
+                const quotes = [
+                    "Believe you can and you're halfway there. – Theodore Roosevelt",
+                    "Do one thing every day that scares you. – Eleanor Roosevelt",
+                    "Keep your face always toward the sunshine—and shadows will fall behind you. – Walt Whitman",
+                    "The only way to do great work is to love what you do. – Steve Jobs",
+                    "The best way out is always through. – Robert Frost"
+                ];
+                response = `💡 Motivational Quote:\n"${quotes[Math.floor(Math.random() * quotes.length)]}"`;
                 break;
+            }
 
             case messageBody === '/info':
                 response = `🤖 *Bot Information:*
@@ -217,12 +216,11 @@ Your Number: ${message.from}
 Message Timestamp: ${new Date(message.timestamp * 1000).toLocaleString()}`;
                 break;
 
-            case messageBody.startsWith('/echo '):
-                {
-                    const echoText = message.body.slice(6);
-                    response = `🔄 You said: ${echoText}`;
-                }
+            case messageBody.startsWith('/echo '): {
+                const echoText = message.body.slice(6);
+                response = `🔄 You said: ${echoText}`;
                 break;
+            }
 
             case messageBody === '/restart':
                 await client.sendMessage(message.to, '♻️ Restarting the bot...');
@@ -236,161 +234,155 @@ Message Timestamp: ${new Date(message.timestamp * 1000).toLocaleString()}`;
                 setTimeout(() => process.exit(0), 1000);
                 return;
 
-            case messageBody === '/tagall':
-                {
-                    const chat = await client.getChatById(message.to);
-                    if (!chat.isGroup) {
-                        response = '⚠️ This command only works in groups!';
-                        break;
-                    }
-
-                    let mentions = [];
-                    let mentionText = '📣 *Tagging everyone:*\n\n';
-
-                    for (let participant of chat.participants) {
-                        const contact = await client.getContactById(participant.id._serialized);
-                        mentions.push(contact);
-                        mentionText += `@${contact.number} `;
-                    }
-
-                    await chat.sendMessage(mentionText, { mentions });
-                    console.log('✅ Tagall message sent!');
-                    return;
+            case messageBody === '/tagall': {
+                const chat = await client.getChatById(message.to);
+                if (!chat.isGroup) {
+                    response = '⚠️ This command only works in groups!';
+                    break;
                 }
 
-            case messageBody.startsWith('/kick '):
-                {
-                    const chat = await client.getChatById(message.to);
-                    if (!chat.isGroup) {
-                        response = '⚠️ This command only works in groups!';
-                        break;
-                    }
+                let mentions = [];
+                let mentionText = '📣 *Tagging everyone:*\n\n';
 
-                    const botContact = await client.getContactById(botNumber + '@c.us');
-                    const botIsAdmin = chat.participants.find(p => p.id._serialized === botContact.id._serialized)?.isAdmin;
-                    if (!botIsAdmin) {
-                        response = '❌ I must be an admin to kick users.';
-                        break;
-                    }
+                for (let participant of chat.participants) {
+                    const contact = await client.getContactById(participant.id._serialized);
+                    mentions.push(contact);
+                    mentionText += `@${contact.number} `;
+                }
 
-                    const mentions = message.mentionedIds;
-                    if (!mentions || mentions.length === 0) {
-                        response = '❗ Please mention a user to kick. Example: /kick @1234567890';
-                        break;
-                    }
+                await chat.sendMessage(mentionText, { mentions });
+                console.log('✅ Tagall message sent!');
+                return;
+            }
 
+            case messageBody.startsWith('/kick '): {
+                const chat = await client.getChatById(message.to);
+                if (!chat.isGroup) {
+                    response = '⚠️ This command only works in groups!';
+                    break;
+                }
+
+                const botContact = await client.getContactById(botNumber + '@c.us');
+                const botIsAdmin = chat.participants.find(p => p.id._serialized === botContact.id._serialized)?.isAdmin;
+                if (!botIsAdmin) {
+                    response = '❌ I must be an admin to kick users.';
+                    break;
+                }
+
+                const mentions = message.mentionedIds;
+                if (!mentions || mentions.length === 0) {
+                    response = '❗ Please mention a user to kick. Example: /kick @1234567890';
+                    break;
+                }
+
+                try {
+                    await chat.removeParticipants(mentions);
+                    response = `✅ User(s) kicked successfully.`;
+                } catch (error) {
+                    response = `❌ Could not kick user(s): ${error.message}`;
+                }
+                break;
+            }
+
+            case messageBody.startsWith('/promote '): {
+                const chat = await client.getChatById(message.to);
+                if (!chat.isGroup) {
+                    response = '⚠️ This command only works in groups!';
+                    break;
+                }
+
+                const botContact = await client.getContactById(botNumber + '@c.us');
+                const botIsAdmin = chat.participants.find(p => p.id._serialized === botContact.id._serialized)?.isAdmin;
+                if (!botIsAdmin) {
+                    response = '❌ I need to be admin to promote users.';
+                    break;
+                }
+
+                const mentions = message.mentionedIds;
+                if (!mentions || mentions.length === 0) {
+                    response = '❗ Please mention a user to promote. Example: /promote @1234567890';
+                    break;
+                }
+
+                try {
+                    await chat.promoteParticipants(mentions);
+                    response = `✅ User(s) promoted to admin successfully.`;
+                } catch (error) {
+                    response = `❌ Could not promote user(s): ${error.message}`;
+                }
+                break;
+            }
+
+            case messageBody === '/roll': {
+                const roll = Math.floor(Math.random() * 100) + 1;
+                response = `🎲 You rolled a ${roll}!`;
+                break;
+            }
+
+            case messageBody.startsWith('/remindme '): {
+                const args = message.body.slice(9).trim().split(' ');
+                if (args.length < 2) {
+                    response = '❗ Usage: /remindme <time> <message>\nExample: /remindme 10m Take a break';
+                    break;
+                }
+
+                const timeArg = args[0];
+                const reminderMsg = args.slice(1).join(' ');
+
+                const timeMatch = timeArg.match(/^(\d+)([smh])$/);
+                if (!timeMatch) {
+                    response = '❗ Invalid time format! Use s=seconds, m=minutes, h=hours. Example: 10m';
+                    break;
+                }
+
+                let delayMs;
+                const value = parseInt(timeMatch[1], 10);
+                switch (timeMatch[2]) {
+                    case 's': delayMs = value * 1000; break;
+                    case 'm': delayMs = value * 60000; break;
+                    case 'h': delayMs = value * 3600000; break;
+                    default:
+                        response = '❗ Unknown time unit! Use s, m, or h.';
+                        break;
+                }
+
+                response = `⏰ Reminder set for ${timeArg} from now: "${reminderMsg}"`;
+                await client.sendMessage(message.to, response);
+
+                setTimeout(async () => {
                     try {
-                        await chat.removeParticipants(mentions);
-                        response = `✅ User(s) kicked successfully.`;
+                        await client.sendMessage(message.to, `⏰ Reminder: ${reminderMsg}`);
                     } catch (error) {
-                        response = `❌ Could not kick user(s): ${error.message}`;
+                        console.error('Failed to send reminder:', error);
                     }
-                }
-                break;
+                }, delayMs);
 
-            case messageBody.startsWith('/promote '):
-                {
-                    const chat = await client.getChatById(message.to);
-                    if (!chat.isGroup) {
-                        response = '⚠️ This command only works in groups!';
-                        break;
-                    }
+                return;
+            }
 
-                    const botContact = await client.getContactById(botNumber + '@c.us');
-                    const botIsAdmin = chat.participants.find(p => p.id._serialized === botContact.id._serialized)?.isAdmin;
-                    if (!botIsAdmin) {
-                        response = '❌ I need to be admin to promote users.';
-                        break;
-                    }
-
-                    const mentions = message.mentionedIds;
-                    if (!mentions || mentions.length === 0) {
-                        response = '❗ Please mention a user to promote. Example: /promote @1234567890';
-                        break;
-                    }
-
-                    try {
-                        await chat.promoteParticipants(mentions);
-                        response = `✅ User(s) promoted to admin successfully.`;
-                    } catch (error) {
-                        response = `❌ Could not promote user(s): ${error.message}`;
-                    }
-                }
-                break;
-
-            case messageBody === '/roll':
-                {
-                    const roll = Math.floor(Math.random() * 100) + 1;
-                    response = `🎲 You rolled a ${roll}!`;
-                }
-                break;
-
-            case messageBody.startsWith('/remindme '):
-                {
-                    const args = message.body.slice(9).trim().split(' ');
-                    if (args.length < 2) {
-                        response = '❗ Usage: /remindme <time> <message>\nExample: /remindme 10m Take a break';
-                        break;
-                    }
-
-                    const timeArg = args[0];
-                    const reminderMsg = args.slice(1).join(' ');
-
-                    const timeMatch = timeArg.match(/^(\d+)([smh])$/);
-                    if (!timeMatch) {
-                        response = '❗ Invalid time format! Use s=seconds, m=minutes, h=hours. Example: 10m';
-                        break;
-                    }
-
-                    let delayMs;
-                    const value = parseInt(timeMatch[1], 10);
-                    switch (timeMatch[2]) {
-                        case 's': delayMs = value * 1000; break;
-                        case 'm': delayMs = value * 60000; break;
-                        case 'h': delayMs = value * 3600000; break;
-                        default:
-                            response = '❗ Unknown time unit! Use s, m, or h.';
-                            break;
-                    }
-
-                    response = `⏰ Reminder set for ${timeArg} from now: "${reminderMsg}"`;
-                    await client.sendMessage(message.to, response);
-
-                    setTimeout(async () => {
-                        try {
-                            await client.sendMessage(message.to, `⏰ Reminder: ${reminderMsg}`);
-                        } catch (error) {
-                            console.error('Failed to send reminder:', error);
-                        }
-                    }, delayMs);
-
-                    return;
+            case messageBody.startsWith('/spam '): {
+                const args = message.body.split(' ');
+                if (args.length < 3) {
+                    response = '❗ Usage: /spam <count> <message>';
+                    break;
                 }
 
-            case messageBody.startsWith('/spam '):
-                {
-                    const args = message.body.split(' ');
-                    if (args.length < 3) {
-                        response = '❗ Usage: /spam <count> <message>';
-                        break;
-                    }
-
-                    let count = parseInt(args[1], 10);
-                    if (isNaN(count) || count < 1 || count > 10) {
-                        response = '❗ Count must be a number between 1 and 10 to prevent abuse.';
-                        break;
-                    }
-
-                    const spamMessage = args.slice(2).join(' ');
-                    response = `📨 Sending "${spamMessage}" ${count} times...`;
-                    await client.sendMessage(message.to, response);
-
-                    for (let i = 0; i < count; i++) {
-                        await client.sendMessage(message.to, spamMessage);
-                    }
-
-                    return;
+                let count = parseInt(args[1], 10);
+                if (isNaN(count) || count < 1 || count > 10) {
+                    response = '❗ Count must be a number between 1 and 10 to prevent abuse.';
+                    break;
                 }
+
+                const spamMessage = args.slice(2).join(' ');
+                response = `📨 Sending "${spamMessage}" ${count} times...`;
+                await client.sendMessage(message.to, response);
+
+                for (let i = 0; i < count; i++) {
+                    await client.sendMessage(message.to, spamMessage);
+                }
+
+                return;
+            }
 
             default:
                 response = `❌ Unknown command: ${messageBody}\nType /help to see available commands.`;
